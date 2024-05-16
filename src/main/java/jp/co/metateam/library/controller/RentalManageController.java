@@ -1,7 +1,7 @@
 package jp.co.metateam.library.controller;
 
-import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import jakarta.validation.Valid;
@@ -99,4 +98,73 @@ public class RentalManageController {
             return "redirect:/rental/add";
         }
     }
+    
+
+    @GetMapping("/rental/{id}/edit")
+    public String edit(@PathVariable("id") Long id, Model model) {
+        List<Account> accountList = this.accountService.findAll();
+        List<Stock> stockList = this.stockService.findAll();
+
+        model.addAttribute("accounts", accountList);
+        model.addAttribute("stockList", stockList);
+        model.addAttribute("rentalStatus", RentalStatus.values());
+
+        if (!model.containsAttribute("rentalManageDto")) {
+            RentalManageDto rentalManageDto = new RentalManageDto();
+            RentalManage rentalManage = this.rentalManageService.findById(id);
+            rentalManageDto.setId(rentalManage.getId());
+            rentalManageDto.setEmployeeId(rentalManage.getAccount().getEmployeeId());
+            rentalManageDto.setExpectedRentalOn(rentalManage.getExpectedRentalOn());
+            rentalManageDto.setExpectedReturnOn(rentalManage.getExpectedReturnOn());
+            rentalManageDto.setStockId(rentalManage.getStock().getId());
+            rentalManageDto.setStatus(rentalManage.getStatus());
+
+            model.addAttribute("rentalManageDto", rentalManageDto);
+        }
+
+        return "rental/edit";
+    }
+
+    @PostMapping("/rental/{id}/edit")
+    public String update(@PathVariable("id") Long id, @Valid @ModelAttribute RentalManageDto rentalManageDto, BindingResult result, RedirectAttributes ra, Model model) {
+        try {
+            if (result.hasErrors()) {
+                throw new Exception("Validation error.");
+            }
+
+            RentalManage rentalManage = this.rentalManageService.findById(id);
+            // ステータスの更新が不正でないかチェック
+            Optional<String> statusError = rentalManageDto.isStatusError(rentalManage.getStatus(),rentalManageDto.getStatus());
+            if (statusError.isPresent()) {
+                // 不正なステータス遷移のエラーメッセージがあればFlash属性に追加して編集画面にリダイレクト
+                ra.addFlashAttribute("error", statusError.get());
+                return "redirect:/rental/"+ id +"/edit";
+            }
+
+            // 日付の妥当性
+             rentalManageDto.dateCheck();
+             
+            // 変更処理
+            rentalManageService.update(id, rentalManageDto);
+
+            return "redirect:/rental/index";
+            
+        } catch (Exception e) {
+            List<Account> accountList = this.accountService.findAll();
+            List<Stock> stockList = this.stockService.findAll();
+
+            model.addAttribute("accounts", accountList);
+            model.addAttribute("stockList", stockList);
+            model.addAttribute("rentalStatus", RentalStatus.values());
+            
+            log.error(e.getMessage());
+
+            ra.addFlashAttribute("rentalManageDto", rentalManageDto);
+            ra.addFlashAttribute("org.springframework.validation.BindingResult.rentalManageDto", result);
+            ra.addFlashAttribute("error1", e.getMessage());
+
+            return "redirect:/rental/"+ id +"/edit";
+        }
+    }
+
 }
