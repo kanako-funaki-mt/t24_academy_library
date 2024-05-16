@@ -49,6 +49,9 @@
                             placeholder="返却予定日を入力" required>
                         <div class="error_msg" th:if="${#fields.hasErrors('expectedReturnOn')}"
                             th:errors="*{expectedReturnOn}"></div>
+                            <div th:if="${error1}" class="alert alert-danger" role="alert">
+                                <p th:text="${error1}"></p>
+                            </div>
                     </div>
                     <div class="mb30">
                         <label class="input_title" for="stockMngNumber">在庫管理番号<span

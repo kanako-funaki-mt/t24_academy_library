@@ -1,6 +1,5 @@
 package jp.co.metateam.library.controller;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,7 +11,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import jakarta.validation.Valid;
@@ -22,7 +20,6 @@ import jp.co.metateam.library.service.StockService;
 import jp.co.metateam.library.model.RentalManage;
 import jp.co.metateam.library.model.Account;
 import jp.co.metateam.library.model.Stock;
-import jp.co.metateam.library.model.StockDto;
 import jp.co.metateam.library.model.RentalManageDto;
 import jp.co.metateam.library.values.RentalStatus;
 import lombok.extern.log4j.Log4j2;
@@ -37,7 +34,6 @@ public class RentalManageController {
     private final AccountService accountService;
     private final RentalManageService rentalManageService;
     private final StockService stockService;
-    private  Object rentalManageDto;
 
     @Autowired
     public RentalManageController(
@@ -136,7 +132,7 @@ public class RentalManageController {
                 throw new Exception("Validation error.");
             }
 
-            RentalManage rentalManage = this.rentalManageService.findById(Long.valueOf(id));
+            RentalManage rentalManage = this.rentalManageService.findById(id);
             // ステータスの更新が不正でないかチェック
             Optional<String> statusError = rentalManageDto.isStatusError(rentalManage.getStatus(),rentalManageDto.getStatus());
             if (statusError.isPresent()) {
@@ -144,7 +140,10 @@ public class RentalManageController {
                 ra.addFlashAttribute("error", statusError.get());
                 return "redirect:/rental/"+ id +"/edit";
             }
-            
+
+            // 日付の妥当性
+             rentalManageDto.dateCheck();
+             
             // 変更処理
             rentalManageService.update(id, rentalManageDto);
 
@@ -162,6 +161,7 @@ public class RentalManageController {
 
             ra.addFlashAttribute("rentalManageDto", rentalManageDto);
             ra.addFlashAttribute("org.springframework.validation.BindingResult.rentalManageDto", result);
+            ra.addFlashAttribute("error1", e.getMessage());
 
             return "redirect:/rental/"+ id +"/edit";
         }
